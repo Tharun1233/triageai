@@ -81,7 +81,7 @@ async function triage() {
     body: JSON.stringify({text})
   });
   const d = await res.json();
-  document.getElementById('loading').style.display = 'block';
+  document.getElementById('loading').style.display = 'none';
   document.getElementById('result').style.display = 'block';
   document.getElementById('result').innerHTML = `
     <div class="card">
