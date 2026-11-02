@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriageAI — Support Ticket Triage Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 2rem; margin-bottom: 4px; }
+  h1 span { color: #38bdf8; }
+  .sub { color: #94a3b8; margin-bottom: 24px; }
+  textarea { width: 100%; min-height: 110px; background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+             border-radius: 10px; padding: 14px; font-size: 1rem; resize: vertical; }
+  textarea:focus { outline: none; border-color: #38bdf8; }
+  .row { display: flex; gap: 10px; margin: 14px 0 8px; flex-wrap: wrap; }
+  button { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 12px 22px;
+           font-size: 1rem; cursor: pointer; font-weight: 600; }
+  button:hover { background: #0369a1; }
+  button.sample { background: #1e293b; border: 1px solid #334155; font-weight: 400; padding: 8px 14px; font-size: .85rem; }
+  button.sample:hover { border-color: #38bdf8; }
+  .samples-label { color: #64748b; font-size: .85rem; margin-top: 10px; }
+  #result { margin-top: 24px; display: none; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 14px;
+          animation: fadeUp .4s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .badges { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .badge { padding: 6px 14px; border-radius: 20px; font-size: .85rem; font-weight: 600; }
+  .cat { background: #1d4ed8; }
+  .urg-critical { background: #dc2626; } .urg-high { background: #ea580c; }
+  .urg-medium { background: #ca8a04; } .urg-low { background: #16a34a; }
+  .sent { background: #475569; }
+  .kv { margin: 8px 0; } .kv b { color: #38bdf8; }
+  .reply { background: #0f172a; border-left: 3px solid #38bdf8; padding: 12px 16px; border-radius: 0 8px 8px 0;
+           margin-top: 12px; font-style: italic; color: #cbd5e1; }
+  .reasoning { margin-top: 12px; font-size: .85rem; color: #94a3b8; }
+  .reasoning li { margin: 4px 0 4px 18px; }
+  .loading { color: #38bdf8; margin-top: 20px; display: none; }
+  .foot { margin-top: 30px; color: #475569; font-size: .8rem; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Triage<span>AI</span></h1>
+  <p class="sub">Agentic support-ticket triage: perceive → assess → sense → decide → act</p>
+
+  <textarea id="ticket" placeholder="Paste a customer support ticket here..."></textarea>
+  <div class="row">
+    <button onclick="triage()">▶ Triage ticket</button>
+  </div>
+  <p class="samples-label">Try a sample:</p>
+  <div class="row" id="samples"></div>
+  <div class="loading" id="loading">Agent is reasoning…</div>
+  <div id="result"></div>
+  <p class="foot">TriageAI demo · FastAPI + scikit-learn · runs fully offline</p>
+</div>
+
+<script>
+const SAMPLES = [
+  "Our production API has been down for two hours, all our customers are affected. This is urgent, fix immediately!",
+  "I was charged twice on my last invoice, please refund the duplicate payment.",
+  "It would be great to have dark mode in the dashboard for night shifts.",
+  "I'm locked out of my account and the password reset email never arrived.",
+  "Where can I find the documentation for the new API version? No rush."
+];
+SAMPLES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'sample'; b.textContent = 'Sample ' + (i+1);
+  b.onclick = () => { document.getElementById('ticket').value = s; triage(); };
+  document.getElementById('samples').appendChild(b);
+});
+
+async function triage() {
+  const text = document.getElementById('ticket').value.trim();
+  if (!text) return;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+  const res = await fetch('/triage', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  });
+  const d = await res.json();
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('result').innerHTML = `
+    <div class="card">
+      <div class="badges">
+        <span class="badge cat">${d.category_label}</span>
+        <span class="badge urg-${d.urgency}">${d.urgency.toUpperCase()} urgency</span>
+        <span class="badge sent">${d.sentiment} sentiment</span>
+      </div>
+      <div class="kv"><b>Routed to:</b> ${d.routed_team}</div>
+      <div class="kv"><b>SLA:</b> respond within ${d.sla}</div>
+      <div class="reply">"${d.suggested_reply}"</div>
+      <ul class="reasoning">${d.reasoning.map(r => `<li>${r}</li>`).join('')}</ul>
+    </div>`;
+}
+</script>
+</body>
+</html>
